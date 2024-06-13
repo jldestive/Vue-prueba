@@ -1,4 +1,4 @@
-<script>
+<script setup>
 import {
 	Table,
 	TableCell,
@@ -6,26 +6,14 @@ import {
 	TableHeader,
 	TableBody,
 	TableHead,
-	TableFooter,
+	TableRow,
 } from '@/components/ui/table';
-import axios from 'axios';
 
-export default {
-	components: { Table, TableHeader, TableBody },
-	props: ['users'],
-	updated: () => {
-		const BASE_URL = 'https://api.nationalize.io';
-
-		const countriesByPersons = this.users.map(async user => {
-			const { firstName, lastName } = user;
-			const url = `${BASE_URL}?name=${firstName} ${lastName}`;
-		});
-	},
-};
+const { users } = defineProps(['users']);
 </script>
 
 <template>
-	<Table>
+	<Table class="mt-16">
 		<TableCaption>A list of recents added users</TableCaption>
 
 		<TableHeader>
@@ -35,16 +23,18 @@ export default {
 				<TableHead>Email</TableHead>
 				<TableHead>Age</TableHead>
 				<TableHead>Sex</TableHead>
+				<TableHead>Nacionality (max %)</TableHead>
 			</TableRow>
 		</TableHeader>
 
 		<TableBody>
-			<TableRow v-for="user in users" :key="user.id">
+			<TableRow v-for="user in users" :key="user.email">
 				<TableCell>{{ user.firstName }}</TableCell>
 				<TableCell>{{ user.lastName }}</TableCell>
 				<TableCell>{{ user.email }}</TableCell>
 				<TableCell>{{ user.age }}</TableCell>
 				<TableCell>{{ user.sex }}</TableCell>
+				<TableCell>{{ user.nacionality }}</TableCell>
 			</TableRow>
 		</TableBody>
 	</Table>

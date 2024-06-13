@@ -1,116 +1,160 @@
-<script>
-export default {
-	name: 'Form',
-	props: ['addUsertoList'],
-	data: () => ({
-		firstName: '',
-		lastName: '',
-		email: '',
-		age: 0,
-		sex: '',
-	}),
-	methods: {
-		submit() {
-			const user = {
-				firstName: this.firstName,
-				lastName: this.lastName,
-				email: this.email,
-				age: this.age,
-				sex: this.sex,
-			};
+<script setup>
+import { ref } from 'vue';
 
-			this.addUsertoList(user);
-			this.clearForm();
+import {
+	FormControl,
+	FormField,
+	FormItem,
+	FormLabel,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+	Select,
+	SelectContent,
+	SelectGroup,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from '@/components/ui/select';
+import { Loader2 } from 'lucide-vue-next';
+import { Button } from '@/components/ui/button';
+import { assert } from '@vueuse/core';
+import axios from 'axios';
+
+const firstName = ref('');
+const lastName = ref('');
+const email = ref('');
+const age = ref('');
+const sex = ref('');
+let isSubmitting = ref(false);
+
+const { addUsertoList } = defineProps(['addUsertoList']);
+
+const clearForm = () => {
+	firstName.value = '';
+	lastName.value = '';
+	email.value = '';
+	age.value = '';
+	sex.value = '';
+};
+
+const getNacionality = async fullName => {
+	assert(fullName != undefined && fullName.length > 0, 'fullName is required');
+
+	isSubmitting.value = true;
+
+	const BASE_URL = 'https://api.nationalize.io';
+	const {
+		data: { country },
+	} = await axios.get(`${BASE_URL}?name=${fullName}`);
+
+	assert(country, 'country is required');
+
+	const { countryId } = Object.entries(country).reduce(
+		(acc, [_, { country_id, probability }]) => {
+			return probability > acc.maxPercent
+				? { countryId: country_id, maxPercent: probability }
+				: acc;
 		},
-		clearForm() {
-			this.firstName = '';
-			this.lastName = '';
-			this.email = '';
-			this.age = 0;
-			this.sex = '';
-		},
-	},
+		{ countryId: '', maxPercent: 0 },
+	);
+
+	const countryName = await getNation(countryId);
+	isSubmitting.value = false;
+
+	return await countryName;
+};
+
+const getNation = async countryId => {
+	assert(countryId, 'countryId is required');
+	const url = `https://restcountries.com/v3.1/alpha/${countryId}`;
+	const { data } = await axios.get(url);
+	const { common } = data[0].name;
+	return common;
+};
+
+const submit = async () => {
+	const user = {
+		firstName: firstName.value,
+		lastName: lastName.value,
+		email: email.value,
+		age: age.value,
+		sex: sex.value,
+		nacionality: await getNacionality(`${firstName.value} ${lastName.value}`),
+	};
+
+	addUsertoList(user);
+	clearForm();
 };
 </script>
 
 <template>
-	<form @submit.prevent="submit">
-		<div class="container">
-			<label for="name">Name:</label>
-			<input type="text" name="name" required id="name" v-model="firstName" />
-		</div>
+	<form @submit.prevent="submit" class="max-w-xl flex flex-col gap-4">
+		<FormField name="firstName">
+			<FormItem>
+				<FormLabel>First Name</FormLabel>
+				<FormControl>
+					<Input
+						required
+						type="text"
+						placeholder="First name"
+						v-model="firstName"
+					/>
+				</FormControl>
+			</FormItem>
+		</FormField>
 
-		<div class="lastName container">
-			<label for="lastName">Last Name:</label>
-			<input
-				type="text"
-				name="lastName"
-				required
-				id="lastName"
-				v-model="lastName"
-			/>
-		</div>
+		<FormField name="lastName">
+			<FormItem class="hidden md:block">
+				<FormLabel>Last Name</FormLabel>
+				<FormControl>
+					<Input
+						required
+						type="text"
+						placeholder="Last name"
+						v-model="lastName"
+					/>
+				</FormControl>
+			</FormItem>
+		</FormField>
 
-		<div class="container">
-			<label for="email">Email:</label>
-			<input type="email" name="email" required id="email" v-model="email" />
-		</div>
+		<FormField name="email">
+			<FormItem>
+				<FormLabel>Email</FormLabel>
+				<FormControl>
+					<Input required type="email" placeholder="Email" v-model="email" />
+				</FormControl>
+			</FormItem>
+		</FormField>
 
-		<div class="age container">
-			<label>Age:</label>
-			<input type="number" required name="age" id="age" v-model="age" />
-		</div>
+		<FormField name="age">
+			<FormItem class="hidden md:block">
+				<FormLabel>Age</FormLabel>
+				<FormControl>
+					<Input required type="number" placeholder="Age" v-model="age" />
+				</FormControl>
+			</FormItem>
+		</FormField>
 
-		<div class="container">
-			<label>Sex:</label>
-			<select name="sex" id="sex" v-model="sex" required>
-				<option value="male">Male</option>
-				<option value="female">Female</option>
-			</select>
-		</div>
+		<Select v-model="sex" required>
+			<SelectTrigger>
+				<SelectValue placeholder="Sex" />
+			</SelectTrigger>
 
-		<div class="button-container">
-			<button type="submit">Submit</button>
-		</div>
+			<SelectContent>
+				<SelectGroup>
+					<SelectItem value="Male">Male</SelectItem>
+				</SelectGroup>
+
+				<SelectGroup>
+					<SelectItem value="Female">Female</SelectItem>
+				</SelectGroup>
+			</SelectContent>
+		</Select>
+
+		<Button type="submit">
+			<Loader2 v-if="isSubmitting" class="size-4 mr-2 animate-spin" />
+			Submit
+		</Button>
 	</form>
 </template>
-
-<style scoped>
-@media (max-width: 600px) {
-	.lastName,
-	.age {
-		display: none;
-	}
-}
-
-form {
-	display: flex;
-	flex-direction: column;
-	row-gap: 10px;
-
-	label {
-		font-weight: bold;
-		font-size: 1.5rem;
-	}
-
-	input,
-	select {
-		padding: 10px 5px;
-		max-width: 300px;
-		border-radius: 5px;
-	}
-}
-
-.container {
-	display: flex;
-	flex-direction: column;
-}
-
-.button-container {
-	width: 100%;
-}
-button {
-	padding: 10px 24px;
-	border-radius: 5px;
-}
-</style>
